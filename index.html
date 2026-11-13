@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html, body { margin:0; height:100% } img{max-width:100%} [hidden]{display:none!important}</style>
 <title>Dino Spelling Range</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lilita+One&display=swap">
 <style>
@@ -178,14 +179,10 @@ body {
   .big-btn { transition: none; }
 }
 </style>
-<style>
-/* Page frame: the game fills the whole browser window. */
-html, body { margin: 0; height: 100%; }
-img { max-width: 100%; }
-[hidden] { display: none !important; }
-</style>
 </head>
 <body>
+
+
 <div id="game">
   <div id="nightSky"></div>
   <div id="fallback" hidden>This game needs 3D graphics (WebGL), and this browser could not start it.</div>
@@ -1382,6 +1379,8 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
   // The fenced paddock, seen from a lookout tower just in front of it.
   const PEN = { x0: -23, x1: 23, z0: -38, z1: -5 };
   const DECK_Y = 9.4;
+  // The prize shelf in the back right corner of the lookout, behind the player's shoulder.
+  const SHELF = { x: 2.7, z: 2.3, top: 0.8, low: 0.27 };
 
   const V3 = T.Vector3;
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -1572,6 +1571,29 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
       sr.position.set(x, DECK_Y + 0.78, 1.4);
       scene.add(sr);
     }
+    // Back rail, so the lookout is railed in all the way round
+    for (const x of [-3.5, 0, 3.5]) {
+      const rp = part(railPost, wood, 1.15);
+      rp.position.set(x, DECK_Y + 0.4, 2.95);
+      scene.add(rp);
+    }
+    for (const y of [0.78, 0.42]) {
+      const br = part(new T.BoxGeometry(7.1, 0.06, 0.06), wood, 1.25);
+      br.position.set(0, DECK_Y + y, 2.95);
+      scene.add(br);
+    }
+
+    // A little two-shelf table in the back right corner, where prizes go
+    const shelfWood = 0xe8b273, shelfLeg = 0xa9713d;
+    const st = new T.Group();
+    st.position.set(SHELF.x, DECK_Y, SHELF.z);
+    const stTop = part(new T.BoxGeometry(1.25, 0.07, 0.95), shelfWood, 1.1); stTop.position.y = SHELF.top - 0.035; st.add(stTop);
+    const stLow = part(new T.BoxGeometry(1.12, 0.06, 0.82), shelfWood, 1.1); stLow.position.y = SHELF.low - 0.03; st.add(stLow);
+    const stLegGeo = new T.CylinderGeometry(0.045, 0.05, SHELF.top - 0.07, 7);
+    for (const [lx, lz] of [[-0.55, -0.4], [0.55, -0.4], [-0.55, 0.4], [0.55, 0.4]]) {
+      const lg = part(stLegGeo, shelfLeg, 1.15); lg.position.set(lx, (SHELF.top - 0.07) / 2, lz); st.add(lg);
+    }
+    scene.add(st);
 
     const sun = new T.Mesh(SPH, new T.MeshBasicMaterial({ color: 0xffd23f, fog: false }));
     sun.scale.setScalar(9);
@@ -1639,6 +1661,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
       g.add(hip);
       legs.push(hip);
     }
+    const deco = []; // spikes, frill and horns (a knight's helmet replaces them)
     if (Math.random() < 0.55) {
       const pts = [[0.5, 1.64], [0.15, 1.32], [-0.1, 1.32], [-0.35, 1.25], [-0.6, 0.98]];
       pts.forEach(([x, y], i) => {
@@ -1646,16 +1669,16 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
         sp.scale.set(0.1, 0.26, 0.1);
         sp.position.set(x, y, 0);
         sp.rotation.z = 0.15 + i * 0.12;
-        g.add(sp);
+        g.add(sp); deco.push(sp);
       });
     } else {
-      sph(g, c2, 0.07, 0.44, 0.44, 0.36, 1.38, 0);
+      deco.push(sph(g, c2, 0.07, 0.44, 0.44, 0.36, 1.38, 0));
       for (const s of [-1, 1]) {
         const h = part(coneGeo, 0xfffbe9, 1.15);
         h.scale.set(0.06, 0.3, 0.06);
         h.position.set(0.7, 1.68, s * 0.15);
         h.rotation.z = -0.5;
-        g.add(h);
+        g.add(h); deco.push(h);
       }
       const nose = part(coneGeo, 0xfffbe9, 1.15);
       nose.scale.set(0.05, 0.2, 0.05);
@@ -1664,6 +1687,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
       g.add(nose);
     }
     g.userData.legs = legs;
+    g.userData.deco = deco;
     return g;
   }
   function runLegs(d, t) {
@@ -1704,6 +1728,129 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     return g;
   }
 
+  // ---------- Special dinos: one comes along after every bug hunt, and stays for good ----------
+  const SPECIALS = [
+    { kind: 'tennis', w: 25 }, { kind: 'knight', w: 25 },
+    { kind: 'rainbow', w: 12 }, { kind: 'tophat', w: 12 }, { kind: 'flower', w: 12 }, { kind: 'target', w: 12 },
+    { kind: 'gold', w: 2 }, // rare
+  ];
+  function pickSpecial() {
+    let n = rand(0, SPECIALS.reduce((t, k) => t + k.w, 0));
+    for (const k of SPECIALS) { n -= k.w; if (n <= 0) return k.kind; }
+    return SPECIALS[0].kind;
+  }
+  // Rainbow: every part is coloured by where it sits on the body, so the bands run nose to tail.
+  function rainbowify(d) {
+    d.updateMatrixWorld(true);
+    const inv = new T.Matrix4().copy(d.matrixWorld).invert();
+    const mat = new T.MeshToonMaterial({ vertexColors: true });
+    const v = new V3(), col = new T.Color(), toLocal = new T.Matrix4();
+    d.traverse((m) => {
+      if (!m.isMesh || !m.material.isMeshToonMaterial) return;
+      const geo = m.geometry.clone();
+      const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3);
+      toLocal.multiplyMatrices(inv, m.matrixWorld);
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(toLocal);
+        const t = clamp((1.15 - v.x - v.y * 0.25) / 2.6, 0, 1);
+        col.setHSL(t * 0.8, 0.9, 0.6);
+        cols[i * 3] = col.r; cols[i * 3 + 1] = col.g; cols[i * 3 + 2] = col.b;
+      }
+      geo.setAttribute('color', new T.BufferAttribute(cols, 3));
+      m.geometry = geo; m.material = mat;
+    });
+  }
+  function addTopHat(d) {
+    const hat = new T.Group();
+    hat.position.set(0.6, 1.56, 0); hat.rotation.z = -0.18;
+    const brim = part(new T.CylinderGeometry(0.32, 0.32, 0.04, 20), INK, 1.1); hat.add(brim);
+    const crown = part(new T.CylinderGeometry(0.2, 0.21, 0.42, 20), 0x2b2233, 1.06); crown.position.y = 0.23; hat.add(crown);
+    const band = part(new T.CylinderGeometry(0.215, 0.215, 0.08, 20), 0xff4d6d, 0); band.position.y = 0.07; hat.add(band);
+    dot(hat, 0xffffff, 0.04, 0.06, 0.02, 0.13, 0.32, 0.12); // a little shine
+    d.add(hat);
+  }
+  function addFlower(d) {
+    const f = new T.Group();
+    f.position.set(0.55, 0.78, -0.45);
+    const stem = part(new T.CylinderGeometry(0.03, 0.035, 1.05, 6), 0x37c96a, 1.2); stem.position.y = 0.5; stem.rotation.z = -0.12; f.add(stem);
+    const leaf = sph(f, 0x37c96a, 0.16, 0.05, 0.08, 0.1, 0.45, 0); leaf.rotation.z = 0.6;
+    const head = new T.Group(); head.position.set(0.08, 1.08, 0); head.rotation.z = -0.25; f.add(head);
+    const petalCol = pick([0xff5d8f, 0xff4d6d, 0xb388ff, 0xff9f1c]);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const pt = sph(head, petalCol, 0.06, 0.15, 0.1, 0.01, Math.cos(a) * 0.2, Math.sin(a) * 0.2, 1.1);
+      pt.rotation.x = -a;
+    }
+    sph(head, 0xffd23f, 0.08, 0.12, 0.12, 0.04, 0, 0, 1.1);
+    f.scale.setScalar(1.15);
+    d.add(f);
+    d.userData.flower = f;
+  }
+  let targetTex = null;
+  function addTargets(d) {
+    if (!targetTex) {
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const x = c.getContext('2d');
+      x.strokeStyle = '#2b2233'; x.lineWidth = 7;
+      [[118, '#ff4d6d'], [92, '#ffffff'], [66, '#ff4d6d'], [40, '#ffffff'], [16, '#ff4d6d']].forEach(([r, col]) => {
+        x.beginPath(); x.arc(128, 128, r, 0, Math.PI * 2); x.fillStyle = col; x.fill(); x.stroke();
+      });
+      targetTex = new T.CanvasTexture(c);
+    }
+    const mat = new T.MeshToonMaterial({ map: targetTex, transparent: true, alphaTest: 0.5 });
+    for (const sd of [1, -1]) { // a patch of the body's own shape, one on each side
+      const w = 1.25;
+      const geo = new T.SphereGeometry(1, 16, 12, (sd > 0 ? Math.PI / 2 : Math.PI * 1.5) - w / 2, w, Math.PI / 2 - w / 2, w);
+      const m = new T.Mesh(geo, mat);
+      m.scale.set(0.62 * 1.03, 0.48 * 1.03, 0.42 * 1.03);
+      m.position.set(0, 0.78, 0);
+      d.add(m);
+    }
+  }
+  // The knight: a helmet with a plume, a breastplate, and a round shield it raises against arrows.
+  const shieldMetal = 0xc9d1dc;
+  function addKnight(d) {
+    for (const m of d.userData.deco) d.remove(m);
+    sph(d, 0xaab4c2, 0.38, 0.26, 0.37, 0.52, 1.55, 0);               // helmet, pulled down over the eyes a little
+    const visor = part(new T.TorusGeometry(0.36, 0.035, 6, 24), 0xffd23f, 0); visor.rotation.x = Math.PI / 2; visor.scale.set(1.05, 1.02, 1); visor.position.set(0.52, 1.42, 0); d.add(visor);
+    for (let i = 0; i < 4; i++) sph(d, 0xff4d6d, 0.1, 0.16, 0.08, 0.5 - i * 0.13, 1.86 - i * 0.07, 0, 1.1); // plume
+    sph(d, 0xaab4c2, 0.3, 0.34, 0.38, 0.32, 0.88, 0);               // breastplate
+    const shield = new T.Group(); // its face looks along local +z
+    const plate = part(new T.CylinderGeometry(0.42, 0.42, 0.06, 22), shieldMetal, 1.08); plate.rotation.x = Math.PI / 2; shield.add(plate);
+    const rim = new T.Mesh(new T.TorusGeometry(0.41, 0.035, 6, 24), toonMat(0x8e99a8)); rim.position.z = 0.03; shield.add(rim);
+    box(shield, 0x4cc9f0, 0.1, 0.56, 0.02, 0, 0, 0.035);
+    box(shield, 0x4cc9f0, 0.56, 0.1, 0.02, 0, 0, 0.036);
+    sph(shield, 0xffd23f, 0.09, 0.09, 0.06, 0, 0, 0.05, 1.1);        // boss
+    d.add(shield);
+    d.userData.shield = shield;
+    poseShield(d, 0);
+  }
+  const SHIELD_REST = new V3(0.42, 0.82, 0.5), SHIELD_UP = new V3(1.15, 1.08, 0);
+  function poseShield(d, k) { // 0: held at its side, turned outwards; 1: up in front of its face
+    const sh = d.userData.shield;
+    sh.position.lerpVectors(SHIELD_REST, SHIELD_UP, k);
+    sh.rotation.set(0, 0.75 + k * (Math.PI / 2 - 0.75), 0);
+  }
+  function makeSpecialDino(kind) {
+    const d = makeDino();
+    if (kind === 'rainbow') rainbowify(d);
+    else if (kind === 'gold') { goldify(d); d.userData.gold = true; }
+    else if (kind === 'tophat') addTopHat(d);
+    else if (kind === 'flower') addFlower(d);
+    else if (kind === 'target') addTargets(d);
+    else if (kind === 'knight') addKnight(d);
+    else if (kind === 'tennis') {
+      const rk = makeRacket();
+      rk.scale.setScalar(1.75);
+      rk.position.set(0.5, 0.8, -0.5);
+      rk.rotation.set(-0.35, 0, -0.25);
+      d.add(rk);
+      d.userData.racket = rk;
+    }
+    if (kind) d.userData.special = kind; // special dinos never go home
+    return d;
+  }
+
   // ---------- Puzzle rig: one caged dino held up by three letter balloons ----------
   const BALLOON_COLORS = [0xff4d6d, 0xffb703, 0x4cc9f0, 0xb388ff, 0xff8fab, 0x80ed99, 0xff7b00];
   const CAGE_H = 1.62, CAGE_R = 0.85, CAGE_SCALE = 1.3; // CAGE_H: top of the basket handle
@@ -1735,7 +1882,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
   const basketMat = new T.MeshToonMaterial({ color: 0xd9a066, side: T.DoubleSide });
   const basketBodyGeo = new T.CylinderGeometry(0.92, 0.72, 0.8, 22, 1, true);
   const weaveGeo = new T.TorusGeometry(1, 0.045, 6, 28);
-  function makeCage() {
+  function makeCage(special) {
     const cage = new T.Group();
     const basket = new T.Group();
     const body = new T.Mesh(basketBodyGeo, basketMat); body.position.y = 0.42; basket.add(body);
@@ -1753,7 +1900,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     const handle = new T.Mesh(new T.TorusGeometry(0.88, 0.075, 8, 24, Math.PI), toonMat(0x8a5a2e));
     handle.position.y = 0.76; basket.add(handle);
     cage.add(basket);
-    const dino = makeDino();
+    const dino = special ? makeSpecialDino(special) : makeDino();
     dino.scale.setScalar(0.68);
     dino.position.y = 0.12;
     dino.rotation.y = -Math.PI / 2; // looks at the player
@@ -1802,9 +1949,9 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
   const BUTTON_Y = ROOF_Y + 1.15, BUTTON_SIZE = 1.9, BUTTON_HIT = 1.25;
   let lastReplay = -9;
 
-  function buildRig(letters) {
+  function buildRig(letters, special) {
     const g = new T.Group();
-    const { cage, dino } = makeCage();
+    const { cage, dino } = makeCage(special);
     g.add(cage);
     const cols = shuffle(BALLOON_COLORS.slice());
     const balloons = letters.map((letter, i) => {
@@ -2396,7 +2543,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     camera.getWorldDirection(aimDir);
     const m = part(SPH, sd.color, 1.12);
     m.scale.setScalar(sd.r0);
-    launch(m, from, sd.speed, 6, { pad: 0.2, grow: [sd.r0, sd.r1, 3.2] });
+    launch(m, from, sd.speed, 6, { pad: 0.2, grow: [sd.r0, sd.r1, 3.2], ball: name });
     sd.appear = 0;
     if (name === 'tennis') sfx.thok(); else sfx.thwack();
   }
@@ -2693,6 +2840,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
   let score = 0, puzzle = null, deck = [], lastWord = '';
   const slotEl = $('slot'), cardEl = $('puzzleCard');
 
+  let specialNext = false; // set after a bug hunt: the next dino is a special one
   function newPuzzle() {
     if (!deck.length) {
       deck = shuffle(WORDS.slice());
@@ -2708,7 +2856,13 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     slotEl.className = '';
     $('l2').textContent = word[1];
     $('l3').textContent = word[2];
-    rig = buildRig(shuffle([answer, ...wrongLetters]));
+    const special = specialNext ? pickSpecial() : null;
+    specialNext = false;
+    rig = buildRig(shuffle([answer, ...wrongLetters]), special);
+    if (special) {
+      [784, 988, 1175].forEach((f, i) => tone(f, f, 0.12, 'triangle', 0.1, 0.4 + i * 0.1));
+      if (special === 'gold') for (let i = 0; i < 6; i++) tone(rand(2500, 4500), rand(2500, 4500), 0.07, 'sine', 0.05, 0.75 + i * 0.07);
+    }
     if (mode !== 'menu') after(0.5, () => say(word.toLowerCase()));
   }
 
@@ -2795,8 +2949,8 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     startCheer(h);
     herd.push(h);
     const living = herd.filter((x) => x.state !== 'leave');
-    if (living.length > MAX_DINOS) { // the oldest one goes home for a nap
-      const old = living[0];
+    if (living.length > MAX_DINOS && living.some((x) => !x.m.userData.special)) { // the oldest one goes home for a nap
+      const old = living.find((x) => !x.m.userData.special); // special dinos stay for good
       old.state = 'leave';
       old.t = 0;
       const hp = old.m.position.clone(); hp.y += 2;
@@ -2824,6 +2978,26 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     for (let i = herd.length - 1; i >= 0; i--) {
       const h = herd[i], d = h.m, p = d.position;
       h.t += dt;
+      if (d.userData.racket) { // swing the racket after hitting a ball back
+        h.swingT = Math.max(0, (h.swingT || 0) - dt);
+        const k = h.swingT > 0 ? Math.sin((1 - h.swingT / 0.4) * Math.PI) : 0;
+        d.userData.racket.rotation.set(-0.35 - k * 1.4, k * 0.6, -0.25);
+      }
+      if (d.userData.gold && Math.random() < dt * 3) {
+        emojiPuff('✨', p.clone().add(new V3(rand(-1.1, 1.1), rand(0.5, 2.2), rand(-0.7, 0.7))), rand(0.4, 0.7), new V3(0, 0.6, 0), 0.7, 0);
+      }
+      if (d.userData.flower) d.userData.flower.rotation.x = Math.sin(h.t * 2.2) * 0.12;
+      if (d.userData.shield) { // the knight lifts its shield while arrows are flying at it
+        h.guardT = Math.max(0, (h.guardT || 0) - dt);
+        h.guardK = (h.guardK || 0) + ((h.guardT > 0 ? 1 : 0) - (h.guardK || 0)) * Math.min(1, dt * 14);
+        poseShield(d, h.guardK);
+        if (h.guardT > 0 && h.state === 'roam') {
+          d.rotation.y += angDiff(Math.atan2(-(camera.position.z - p.z), camera.position.x - p.x), d.rotation.y) * Math.min(1, dt * 14);
+          p.y = 0;
+          for (const lg of d.userData.legs) lg.rotation.z *= Math.max(0, 1 - dt * 10);
+          continue;
+        }
+      }
       if (h.state === 'cheer') {
         const k = h.t / 1.2;
         p.y = Math.abs(Math.sin(h.t * Math.PI / 0.4)) * 0.8;
@@ -2960,6 +3134,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     for (const h of herd) if (h.state !== 'leave') startCheer(h);
     // A side game as a reward, once the dinos have finished cheering (the dance needs them free).
     after(3.0, () => startEgg());
+    specialNext = true; // bonus: the next puzzle's dino is a special one
     after(2.2, () => {
       $('bugView').hidden = true;
       $('puzzleView').hidden = false;
@@ -3037,12 +3212,15 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
   }
 
   // ---------- Looking around ----------
-  const YAW_MAX = 60 * DEG, PITCH_MIN = -55 * DEG, PITCH_MAX = 28 * DEG;
+  // Wide enough to reach the whole fence, both front corners included, and every fruit tree.
+  const YAW_MAX = 84 * DEG, PITCH_MIN = -60 * DEG, PITCH_MAX = 32 * DEG;
+  // To the right you can turn a bit further, past the play area, to see the prize shelf behind you.
+  const YAW_RIGHT = 120 * DEG, EDGE = 0.88;
   const PITCH_REST = -14 * DEG;
   let yaw = 0, pitch = PITCH_REST;
   const locked = () => document.pointerLockElement === canvas;
   function applyLook() {
-    yaw = clamp(yaw, -YAW_MAX, YAW_MAX);
+    yaw = clamp(yaw, -YAW_RIGHT, YAW_MAX);
     pitch = clamp(pitch, PITCH_MIN, PITCH_MAX);
     camera.rotation.set(pitch, yaw, 0);
   }
@@ -3062,7 +3240,8 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
       const r = wrap.getBoundingClientRect();
       const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
       const ny = ((e.clientY - r.top) / r.height) * 2 - 1;
-      yaw = -nx * YAW_MAX;
+      // The play area fills most of the width; the last strip on the right turns round to the shelf.
+      yaw = nx <= EDGE ? -nx / EDGE * YAW_MAX : -(YAW_MAX + (nx - EDGE) / (1 - EDGE) * (YAW_RIGHT - YAW_MAX));
       pitch = PITCH_REST - ny * 36 * DEG;
     }
     applyLook();
@@ -3331,7 +3510,14 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     scene.add(m);
     if (m.userData.ufo) [330, 660, 990, 660, 330].forEach((f, i) => tone(f, f * 1.5, 0.14, 'sine', 0.06, i * 0.14));
     else if (kind.make === makeJet) tone(200, 900, 0.9, 'sawtooth', 0.04);
-    flyers.push({ m, dir, speed: kind.speed, r: kind.r * kind.scale / 1.3, state: 'fly', t: 0, vy: 0, ph: rand(0, 6.28), tumble: rand(2.5, 4) * (Math.random() < 0.5 ? -1 : 1), smoke: 0 });
+    const fl = { m, dir, speed: kind.speed, r: kind.r * kind.scale / 1.3, state: 'fly', t: 0, vy: 0, ph: rand(0, 6.28), tumble: rand(2.5, 4) * (Math.random() < 0.5 ? -1 : 1), smoke: 0 };
+    // Half the UFOs stop behind the paddock and drop off an alien.
+    if (m.userData.ufo && !alien && !flyers.some((o) => o.visit) && (only ? only.visit : Math.random() < 0.5)) {
+      fl.visit = { stopX: rand(-22, 22), dropped: false };
+      m.position.z = rand(-56, -46);
+    }
+    flyers.push(fl);
+    return fl;
   }
   function crashFlyer(f) {
     f.state = 'crash';
@@ -3356,7 +3542,14 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
       const sp = m.userData.spinner;
       if (sp) sp.rotation[m.userData.spinAxis] += dt * (f.state === 'fly' ? 30 : 12);
       if (m.userData.flame) m.userData.flame.scale.y = 1.6 + Math.sin(f.t * 40) * 0.35;
+      if (f.state === 'hover') { updateHover(f, dt); continue; }
       if (f.state === 'fly') {
+        if (f.visit && !f.visit.dropped && f.dir * (p.x - f.visit.stopX) >= 0) {
+          f.state = 'hover'; f.t = 0; m.userData.beam.visible = false;
+          [440, 330, 220].forEach((fr, k) => tone(fr, fr * 0.8, 0.2, 'sine', 0.06, k * 0.15));
+          continue;
+        }
+        if (f.leaving) { p.y += 7 * dt; m.userData.beam.visible = true; }
         p.x += f.dir * f.speed * dt;
         if (m.userData.ufo) { // wobbly, swoopy saucer flight
           p.y += Math.sin(f.t * 2.2 + f.ph) * 5 * dt;
@@ -3445,52 +3638,22 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
       src.start(t); src.stop(t + dur + 0.05);
     } catch (e) {}
   }
-  function crowdCheer() {
+  // Hole in one: a bright party-popper POP, then a sparkler fizzing and crackling as it dies away.
+  function popSparkler() {
     if (!ac || !soundOn) return;
-    try {
-      const t0 = ac.currentTime, dur = 4.2;
-      // The roar: noise through three voice-like bands, swelling up then dying away.
-      const len = Math.ceil(ac.sampleRate * dur);
-      const buf = ac.createBuffer(1, len, ac.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-      for (const [f, q, v] of [[700, 0.9, 0.5], [1300, 1.1, 0.4], [2600, 1.4, 0.22]]) {
-        const src = ac.createBufferSource(); src.buffer = buf;
-        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
-        const g = ac.createGain();
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(v, t0 + 0.35);
-        g.gain.setValueAtTime(v, t0 + 1.6);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-        // a slow wobble so it sounds like many people, not a steady hiss
-        const lfo = ac.createOscillator(), lg = ac.createGain();
-        lfo.frequency.value = rand(3, 6); lg.gain.value = v * 0.35;
-        lfo.connect(lg); lg.connect(g.gain);
-        src.connect(bp); bp.connect(g); g.connect(ac.destination);
-        src.start(t0); src.stop(t0 + dur); lfo.start(t0); lfo.stop(t0 + dur);
-      }
-      // Voices going "yaaay!": a dozen wobbly voices sliding up and back down.
-      for (let i = 0; i < 12; i++) {
-        const st = t0 + rand(0, 0.5), base = rand(180, 420), long = rand(1.2, 2.2);
-        const o = ac.createOscillator(); o.type = 'sawtooth';
-        o.frequency.setValueAtTime(base, st);
-        o.frequency.linearRampToValueAtTime(base * rand(1.4, 1.8), st + 0.3);
-        o.frequency.linearRampToValueAtTime(base * 1.1, st + long);
-        const vib = ac.createOscillator(), vg = ac.createGain();
-        vib.frequency.value = rand(5, 8); vg.gain.value = base * 0.03;
-        vib.connect(vg); vg.connect(o.frequency);
-        const fm = ac.createBiquadFilter(); fm.type = 'bandpass'; fm.frequency.value = rand(800, 1300); fm.Q.value = 2;
-        const g = ac.createGain();
-        g.gain.setValueAtTime(0.0001, st);
-        g.gain.exponentialRampToValueAtTime(0.05, st + 0.15);
-        g.gain.exponentialRampToValueAtTime(0.0001, st + long);
-        o.connect(fm); fm.connect(g); g.connect(ac.destination);
-        o.start(st); o.stop(st + long + 0.05); vib.start(st); vib.stop(st + long + 0.05);
-      }
-    } catch (e) {}
-    // Clapping all the way through, and a couple of whistles.
-    for (let i = 0; i < 60; i++) noiseBurst(0.04, rand(1800, 3200), 0.16, 0.2 + i * 0.06 + rand(0, 0.05), 2);
-    for (const dl of [0.5, 1.5]) { tone(1500, 2600, 0.25, 'sine', 0.06, dl); tone(2600, 2000, 0.3, 'sine', 0.05, dl + 0.25); }
+    // The pop: a sharp burst of noise with a thump underneath
+    noiseBurst(0.09, 1800, 0.5, 0, 0.6);
+    tone(320, 70, 0.12, 'sine', 0.35);
+    tone(1200, 400, 0.05, 'square', 0.08);
+    // The sparkler: a steady high fizz...
+    noiseBurst(1.6, 6500, 0.07, 0.08, 1.2);
+    noiseBurst(1.3, 9000, 0.05, 0.12, 2);
+    // ...with little crackles that thin out as it burns down
+    for (let i = 0; i < 34; i++) {
+      const d = 0.1 + Math.pow(Math.random(), 1.6) * 1.5;
+      noiseBurst(0.025, rand(3500, 9000), rand(0.08, 0.2) * (1 - d / 1.8), d, 4);
+      if (Math.random() < 0.35) tone(rand(3000, 6000), rand(2500, 5000), 0.04, 'triangle', 0.03, d);
+    }
   }
 
   // ---------- 1. Golf green ----------
@@ -3515,13 +3678,15 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     const gf = egg.golf;
     if (!gf || gf.done || Math.hypot(p.x - gf.hole.x, p.z - gf.hole.z) > 1.7) return;
     gf.done = true;
-    crowdCheer();
+    // Confetti pops out of the hole with a bang and a fizz, then the voice says it.
+    popSparkler();
     const up = gf.hole.clone().setY(0.4);
     const rainbow = [0xff4d6d, 0xffd23f, 0x37c96a, 0x4cc9f0, 0xb388ff, 0xff9f1c];
     confettiBurst(up, rainbow, 50, 12);
     after(0.4, () => confettiBurst(up, rainbow, 40, 10));
     after(0.8, () => confettiBurst(up, rainbow, 40, 14));
-    say('Hole in one!');
+    after(1.7, () => say('Hole in one!'));
+    after(2.0, () => award('trophy'));
   }
   function updateGolf(dt) {
     const gf = egg.golf;
@@ -3653,6 +3818,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
         dg.stick = stick;
         dg.state = 'happy'; dg.timer = 0; dg.u = nearestDogU(p); dg.target = dogPoint(dg.u);
         bark();
+        if (!dg.framed) { dg.framed = true; after(1.5, () => award('frame')); } // one photo per dog
         for (let i = 0; i < 4; i++) after(i * 0.3, () => emojiPuff('💖', p.clone().setY(3), 1.2, new V3(rand(-0.6, 0.6), 2.2, 0), 1.1, -1));
       }
     } else if (dg.state === 'happy') {
@@ -3786,34 +3952,88 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
 
   // ---------- 4. Apples on the trees ----------
   const apples = [];
+  // Each fruit is picked on its own at random, so every crop is a different mix.
+  // The golden apple is rare, sparkles, and rings the till when it falls.
+  const FRUIT_KINDS = [
+    { kind: 'apple', w: 30, r: 0.3 }, { kind: 'orange', w: 25, r: 0.32 },
+    { kind: 'pear', w: 25, r: 0.3 }, { kind: 'cherries', w: 20, r: 0.18 }, { kind: 'gold', w: 5, r: 0.3 },
+  ];
+  function pickFruit() {
+    let n = rand(0, FRUIT_KINDS.reduce((t, k) => t + k.w, 0));
+    for (const k of FRUIT_KINDS) { n -= k.w; if (n <= 0) return k; }
+    return FRUIT_KINDS[0];
+  }
+  function makeFruit(kind) {
+    const a = new T.Group();
+    const stem = (y, tilt = 0) => { const st = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.16, 5), toonMat(0x6b4423)); st.position.y = y; st.rotation.z = tilt; a.add(st); return st; };
+    const leaf = (x, y) => { const lf = new T.Mesh(SPH, toonMat(0x37c96a)); lf.scale.set(0.12, 0.04, 0.06); lf.position.set(x, y, 0); a.add(lf); };
+    if (kind === 'apple' || kind === 'gold') {
+      const col = kind === 'gold' ? 0xffc72c : 0xe8352f;
+      const f = part(SPH, col, 1.12); f.scale.set(0.32, 0.3, 0.32); a.add(f);
+      stem(0.33); leaf(0.09, 0.36);
+      dot(a, 0xffffff, 0.07, 0.05, 0.04, -0.12, 0.12, 0.27);
+      if (kind === 'gold') dot(a, 0xfff6c2, 0.05, 0.09, 0.04, 0.1, 0.05, 0.28);
+    } else if (kind === 'orange') {
+      const f = part(SPH, 0xff9f1c, 1.12); f.scale.setScalar(0.32); a.add(f);
+      for (const [x, y] of [[0.12, 0.08], [-0.1, -0.05], [0.02, -0.15], [-0.14, 0.12]]) dot(a, 0xe8850f, 0.025, 0.025, 0.02, x, y, 0.3);
+      leaf(0.08, 0.32);
+      dot(a, 0xffffff, 0.06, 0.04, 0.03, -0.12, 0.14, 0.27);
+    } else if (kind === 'pear') {
+      const lo = part(SPH, 0xc9e265, 1.12); lo.scale.set(0.3, 0.28, 0.3); a.add(lo);
+      const hi = part(SPH, 0xc9e265, 1.12); hi.scale.set(0.19, 0.22, 0.19); hi.position.y = 0.28; a.add(hi);
+      stem(0.55, 0.2); leaf(0.1, 0.56);
+      dot(a, 0xffffff, 0.06, 0.05, 0.03, -0.1, 0.06, 0.26);
+    } else { // two cherries on a shared stalk
+      for (const x of [-0.13, 0.13]) {
+        const c = part(SPH, 0xc8102e, 1.14); c.scale.setScalar(0.17); c.position.set(x, -0.08, 0); a.add(c);
+        dot(a, 0xffffff, 0.04, 0.03, 0.02, x - 0.05, -0.03, 0.15);
+      }
+      stem(0.14, 0.45).position.x = -0.06;
+      stem(0.14, -0.45).position.x = 0.06;
+      leaf(0.08, 0.26);
+    }
+    return a;
+  }
   function startApples() {
-    // Pick trees the player can see well: the nearest ones in front.
-    const visible = treeList.filter((t) => t.g.position.z < -20 && Math.abs(t.g.position.x) < 60)
-      .sort((p1, p2) => p1.g.position.distanceTo(camera.position) - p2.g.position.distanceTo(camera.position));
+    // Trees the player can see and aim at: in front, within the aiming range, the nearest first.
+    const visible = treeList.filter((t) => {
+      const dx = t.g.position.x - camera.position.x, dz = t.g.position.z - camera.position.z;
+      return dz < -15 && Math.abs(Math.atan2(dx, -dz)) < 72 * DEG;
+    }).sort((p1, p2) => p1.g.position.distanceTo(camera.position) - p2.g.position.distanceTo(camera.position));
     const chosen = shuffle(visible.slice(0, 12)).slice(0, 5);
+    goldTrees.clear();
     for (const t of chosen) {
       const toCam = camera.position.clone().sub(t.g.position).setY(0).normalize();
       for (let i = 0; i < 3; i++) {
         const dir = new V3(toCam.x + rand(-0.8, 0.8), rand(-0.3, 0.6), toCam.z + rand(-0.8, 0.8)).normalize();
-        const a = new T.Group();
-        const fruit = part(SPH, 0xe8352f, 1.12); fruit.scale.set(0.32, 0.3, 0.32); a.add(fruit);
-        const stem = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.14, 5), toonMat(0x6b4423)); stem.position.y = 0.33; a.add(stem);
-        const leaf = new T.Mesh(SPH, toonMat(0x37c96a)); leaf.scale.set(0.12, 0.04, 0.06); leaf.position.set(0.09, 0.36, 0); a.add(leaf);
-        dot(a, 0xffffff, 0.07, 0.05, 0.04, -0.12, 0.12, 0.27);
+        const fk = pickFruit();
+        const a = makeFruit(fk.kind);
         a.position.set(dir.x * 1.45, 2.9 + dir.y * 1.35, dir.z * 1.45);
         a.scale.setScalar(0.01);
         t.g.add(a);
-        apples.push({ m: a, tree: t, state: 'grow', t: rand(-0.6, 0), v: null, s: t.s });
+        apples.push({ m: a, tree: t, kind: fk.kind, r0: fk.r, state: 'grow', t: rand(-0.6, 0), v: null, s: t.s });
       }
     }
     egg.apples = true;
     tone(659, 988, 0.3, 'triangle', 0.1);
+  }
+  function kaChing() { // a cash register: the drawer clunks open, then the bell rings and coins jingle
+    noiseBurst(0.12, 900, 0.25, 0, 1.5);
+    tone(180, 120, 0.08, 'square', 0.12, 0.02);
+    tone(2093, 2093, 0.7, 'sine', 0.16, 0.12);
+    tone(2637, 2637, 0.6, 'sine', 0.12, 0.12);
+    tone(4186, 4186, 0.4, 'sine', 0.05, 0.12);
+    for (let i = 0; i < 6; i++) tone(rand(3000, 5000), rand(3000, 5000), 0.06, 'triangle', 0.05, 0.25 + i * 0.07);
   }
   const appleWorld = new V3();
   function updateApples(dt) {
     for (let i = apples.length - 1; i >= 0; i--) {
       const ap = apples[i];
       ap.t += dt;
+      if (ap.kind === 'gold' && ap.t > 0.5 && Math.random() < dt * 4) { // sparkles round the golden apple
+        ap.m.getWorldPosition(appleWorld);
+        emojiPuff('✨', appleWorld.add(new V3(rand(-0.6, 0.6), rand(-0.4, 0.8), rand(-0.6, 0.6)).multiplyScalar(ap.s)), 0.5 * ap.s, new V3(0, 0.6, 0), 0.6, 0);
+      }
       if (ap.state === 'grow') {
         ap.m.scale.setScalar(Math.max(0.01, Math.min(1, ap.t / 1.2)));
         if (ap.t > 120) { ap.m.parent.remove(ap.m); apples.splice(i, 1); }
@@ -3821,7 +4041,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
         ap.v.y -= 22 * dt;
         ap.m.position.addScaledVector(ap.v, dt);
         ap.m.rotation.z += ap.v.x * dt;
-        const r0 = 0.3 * ap.s;
+        const r0 = ap.r0 * ap.s;
         if (ap.m.position.y < r0) {
           ap.m.position.y = r0;
           if (Math.abs(ap.v.y) > 2) { ap.v.y = -ap.v.y * 0.4; ap.v.x *= 0.7; ap.v.z *= 0.7; tone(220, 140, 0.06, 'sine', 0.12); }
@@ -3875,7 +4095,6 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     poops.push({ m, t: 0 });
     tone(90, 55, 0.35, 'sawtooth', 0.12);
     noiseBurst(0.3, 200, 0.12);
-    if (poops.length > 30) cleanPoop(0);
   }
   function cleanPoop(i) {
     const pp = poops[i];
@@ -3907,13 +4126,24 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
       scene.attach(ap.m);
       ap.state = 'fall';
       ap.v = new V3(rand(-1.5, 1.5), 1, rand(-1.5, 1.5));
-      tone(700, 300, 0.1, 'triangle', 0.12);
+      if (ap.kind === 'gold') {
+        kaChing();
+        if (!goldTrees.has(ap.tree)) { goldTrees.add(ap.tree); after(1.2, () => award('apple')); } // one per tree
+        for (let k = 0; k < 8; k++) emojiPuff('✨', appleWorld.clone().add(new V3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(ap.s)), 0.8 * ap.s, new V3(rand(-1, 1), 1.5, 0), 0.8, 0);
+      } else tone(700, 300, 0.1, 'triangle', 0.12);
       return true;
     }
     for (let i = 0; i < poops.length; i++) {
       centre.copy(poops[i].m.position); centre.y += 0.5;
       if (!segHits(centre, 1.1 + a.pad, len2)) continue;
       cleanPoop(i);
+      poopsCleaned++; // a secret tally: every 50 earns a golden poop
+      if (poopsCleaned % 50 === 0) {
+        [1047, 1319, 1568, 2093].forEach((f, k) => tone(f, f, 0.13, 'square', 0.06, k * 0.08)); // ding-ding-ding-DING!
+        tone(2093, 2093, 0.45, 'triangle', 0.08, 0.32);
+        for (let k = 0; k < 6; k++) tone(rand(3000, 5000), rand(3000, 5000), 0.05, 'sine', 0.04, 0.35 + k * 0.06);
+        after(1.0, () => award('poop'));
+      }
       return true;
     }
     return false;
@@ -3924,6 +4154,511 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     updateFire(dt);
     updateApples(dt);
     updateDance(dt);
+  }
+
+  // ======================================================================
+  // ---------- Prizes on the shelf ----------
+  // Hole in one: a trophy. Playing fetch: a photo of the happy dog. A golden apple: a golden apple.
+  // Every 50 poops cleaned up: a golden poop. When the shelf is full, prizes spill onto the deck,
+  // then over the rail into a heap on the ground.
+  // ======================================================================
+  // Polished gold: a painted "matcap" sphere gives a bright highlight, warm body and dark rim from every angle.
+  const goldMat = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const x = c.getContext('2d');
+    let g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    [[0, '#ffe680'], [0.45, '#ffc21a'], [0.72, '#d48a0b'], [0.9, '#8a5205'], [1, '#4a2a00']].forEach(([o, col]) => g.addColorStop(o, col));
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    g = x.createRadialGradient(150, 175, 0, 150, 175, 90); // warm bounce light low on the right
+    g.addColorStop(0, 'rgba(255, 236, 150, 0.55)'); g.addColorStop(1, 'rgba(255, 236, 150, 0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    g = x.createRadialGradient(92, 82, 0, 92, 82, 46); // the bright shine, top left
+    g.addColorStop(0, 'rgba(255, 255, 255, 1)'); g.addColorStop(0.35, 'rgba(255, 255, 240, 0.85)'); g.addColorStop(1, 'rgba(255, 255, 240, 0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    return new T.MeshMatcapMaterial({ matcap: new T.CanvasTexture(c) });
+  })();
+  function goldPart(geo, outline) { const m = part(geo, 0xffc533, outline); m.material = goldMat; return m; }
+  function goldify(o) { o.traverse((m) => { if (m.isMesh && m.material && m.material.isMeshToonMaterial) m.material = goldMat; }); }
+
+  const cupGeo = (() => {
+    const pts = [];
+    for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new T.Vector2(0.03 + 0.105 * Math.sin(t * Math.PI / 2), t * 0.19)); }
+    return new T.LatheGeometry(pts, 18);
+  })();
+  const handleGeo = new T.TorusGeometry(0.055, 0.013, 6, 14, Math.PI);
+  const handleLine = new T.TorusGeometry(0.055, 0.021, 6, 14, Math.PI);
+  let plaqueTexture = null;
+  function plaqueTex() {
+    if (plaqueTexture) return plaqueTexture;
+    const c = document.createElement('canvas'); c.width = 256; c.height = 72;
+    const x = c.getContext('2d');
+    x.fillStyle = '#ffd23f'; x.fillRect(0, 0, 256, 72);
+    x.strokeStyle = '#2b2233'; x.lineWidth = 8; x.strokeRect(4, 4, 248, 64);
+    x.fillStyle = '#2b2233'; x.font = '44px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('HOLE IN 1', 128, 39);
+    return (plaqueTexture = new T.CanvasTexture(c));
+  }
+  function makeTrophy() {
+    const g = new T.Group();
+    const base = part(new T.BoxGeometry(0.24, 0.09, 0.18), 0x6b4423, 1.1); base.position.y = 0.045; g.add(base);
+    const plaque = new T.Mesh(new T.PlaneGeometry(0.19, 0.055), new T.MeshBasicMaterial({ map: plaqueTex() }));
+    plaque.position.set(0, 0.045, 0.092); g.add(plaque);
+    const stem = goldPart(new T.CylinderGeometry(0.022, 0.05, 0.1, 10), 1.12); stem.position.y = 0.14; g.add(stem);
+    const cup = goldPart(cupGeo, 1.05); cup.position.y = 0.19; g.add(cup);
+    for (const s of [-1, 1]) {
+      const hd = new T.Mesh(handleGeo, goldMat); hd.add(new T.Mesh(handleLine, outlineMat));
+      hd.position.set(s * 0.13, 0.31, 0); hd.rotation.z = -s * Math.PI / 2; g.add(hd);
+    }
+    const ball = part(SPH, 0xffffff, 1.12); ball.scale.setScalar(0.045); ball.position.set(0.02, 0.385, 0); g.add(ball);
+    g.userData = { h: 0.43, shiny: true };
+    return g;
+  }
+
+  // A photo of the dog, eyes shut with happiness, tongue out, hearts all round.
+  function dogPicTex(bg) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 208;
+    const x = c.getContext('2d');
+    x.fillStyle = bg; x.fillRect(0, 0, 256, 208);
+    x.lineWidth = 6; x.strokeStyle = '#2b2233'; x.lineJoin = 'round'; x.lineCap = 'round';
+    const blob = (cx, cy, rx, ry, col, rot = 0) => { x.beginPath(); x.ellipse(cx, cy, rx, ry, rot, 0, Math.PI * 2); x.fillStyle = col; x.fill(); x.stroke(); };
+    const heart = (hx, hy, s, col) => {
+      x.save(); x.translate(hx, hy); x.scale(s, s);
+      x.beginPath(); x.moveTo(0, 9); x.bezierCurveTo(-18, -3, -10, -18, 0, -8); x.bezierCurveTo(10, -18, 18, -3, 0, 9);
+      x.fillStyle = col; x.fill(); x.lineWidth = 4 / s; x.stroke(); x.restore();
+    };
+    blob(128, 236, 92, 66, '#d9a066');            // shoulders
+    blob(128, 176, 56, 12, '#ff4d6d');            // collar
+    blob(128, 192, 10, 10, '#ffd23f');            // tag
+    blob(66, 96, 24, 48, '#8a5a2e', 0.4);         // ears
+    blob(190, 96, 24, 48, '#8a5a2e', -0.4);
+    blob(128, 100, 64, 60, '#d9a066');            // head
+    blob(128, 130, 36, 26, '#fffbe9');            // muzzle
+    blob(128, 149, 9, 12, '#ff7aa2');             // tongue
+    x.beginPath(); x.arc(117, 132, 11, 0, Math.PI); x.stroke();
+    x.beginPath(); x.arc(139, 132, 11, 0, Math.PI); x.stroke();
+    blob(128, 117, 13, 9, '#2b2233');             // nose
+    x.beginPath(); x.arc(100, 94, 12, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); // happy shut eyes
+    x.beginPath(); x.arc(156, 94, 12, Math.PI * 1.1, Math.PI * 1.9); x.stroke();
+    x.fillStyle = 'rgba(255, 93, 143, 0.55)';
+    for (const bx of [86, 170]) { x.beginPath(); x.ellipse(bx, 114, 11, 7, 0, 0, Math.PI * 2); x.fill(); }
+    heart(36, 40, 1.5, '#ff4d6d'); heart(220, 36, 1.2, '#ff5d8f'); heart(128, 24, 0.9, '#ff5d8f');
+    heart(30, 150, 1.1, '#ff5d8f'); heart(226, 146, 1.4, '#ff4d6d');
+    return new T.CanvasTexture(c);
+  }
+  const PHOTO_BGS = ['#bdf0ff', '#ffe3a3', '#d9f7c8', '#ffd1e3', '#e3d6ff'];
+  const FRAME_COLS = [0xb5652b, 0xff8a3d, 0x4cc9f0, 0xffd23f, 0xb388ff];
+  function makeFrame() {
+    const g = new T.Group();
+    const W = 0.4, H = 0.33;
+    const tilt = new T.Group(); tilt.rotation.x = -0.18; g.add(tilt);
+    const fr = part(new T.BoxGeometry(W, H, 0.04), pick(FRAME_COLS), 1.1); fr.position.y = H / 2; tilt.add(fr);
+    const pic = new T.Mesh(new T.PlaneGeometry(W - 0.08, H - 0.08), new T.MeshBasicMaterial({ map: dogPicTex(pick(PHOTO_BGS)) }));
+    pic.position.set(0, H / 2, 0.021); tilt.add(pic);
+    const leg = part(new T.BoxGeometry(0.05, H * 0.8, 0.02), 0x8a5a2e, 0); leg.position.set(0, H * 0.38, -0.08); leg.rotation.x = 0.4; g.add(leg);
+    g.userData = { h: H };
+    return g;
+  }
+  function makeGoldApple() {
+    const g = new T.Group();
+    const f = makeFruit('gold'); goldify(f); f.scale.setScalar(0.62); f.position.y = 0.3 * 0.62; g.add(f);
+    g.userData = { h: 0.42, shiny: true };
+    return g;
+  }
+  function makeGoldPoop() {
+    const g = new T.Group();
+    const p = makePoop(); goldify(p); p.scale.setScalar(0.45); g.add(p);
+    g.userData = { h: 0.4, shiny: true };
+    return g;
+  }
+
+  // Where prizes go: the shelf first (top, then bottom), then heaps on the deck, then on the ground.
+  const shelfSlots = [];
+  for (const y of [SHELF.top, SHELF.low]) {
+    const row = [];
+    for (const lx of [-0.38, 0, 0.38]) for (const lz of [-0.2, 0.2]) row.push(new V3(SHELF.x + lx, DECK_Y + y, SHELF.z + lz));
+    const flat = (p) => Math.hypot(p.x - camera.position.x, p.z - camera.position.z);
+    row.sort((a, b) => flat(b) - flat(a)); // back row first, so the front row doesn't hide it
+    shelfSlots.push(...row);
+  }
+  function pileCells(x0, x1, z0, z1, y, cap, skip) {
+    const cells = [];
+    for (let x = x0 + 0.18; x < x1; x += 0.36) for (let z = z0 + 0.18; z < z1; z += 0.36) {
+      if (!skip || !skip(x, z)) cells.push({ x, z, y, h: 0, cap });
+    }
+    return cells;
+  }
+  // On the deck: only behind the player (z > 1), so a heap never gets in front of the play area.
+  const deckCells = pileCells(1.5, 3.45, 1.05, 2.9, DECK_Y, 1.4,
+    (x, z) => Math.abs(x - SHELF.x) < 0.68 && Math.abs(z - SHELF.z) < 0.52);
+  const groundCells = pileCells(4.0, 7.6, 0.8, 5.6, 0, 3.0);
+  const awardsMoving = [], shinies = [];
+  let awardCount = 0, poopsCleaned = 0, sparkleT = 0;
+  const goldTrees = new Set();
+
+  function pickCell() {
+    for (;;) {
+      for (const [cells, cx, cz] of [[deckCells, SHELF.x, SHELF.z], [groundCells, 5.2, 2.6]]) {
+        let best = null, bestScore = Infinity;
+        for (const c of cells) {
+          if (c.h >= c.cap) continue;
+          const sc = c.h + Math.hypot(c.x - cx, c.z - cz) * 0.5 + rand(0, 0.4);
+          if (sc < bestScore) { bestScore = sc; best = c; }
+        }
+        if (best) return best;
+      }
+      for (const c of groundCells) c.cap += 1.5; // everything's full: the ground heap just keeps growing
+    }
+  }
+  function award(kind) {
+    const m = ({ trophy: makeTrophy, frame: makeFrame, apple: makeGoldApple, poop: makeGoldPoop })[kind]();
+    const H = m.userData.h;
+    const tableTop = new V3(SHELF.x, DECK_Y + SHELF.top + 0.35, SHELF.z);
+    let aw;
+    if (awardCount < shelfSlots.length) {
+      const to = shelfSlots[awardCount];
+      aw = { from: to.clone().add(new V3(0, 0.9, 0)), to: to.clone(), dur: 0.55, arc: 0,
+        rot: new T.Euler(0, Math.atan2(camera.position.x - to.x, camera.position.z - to.z), 0), spin: 0 };
+    } else {
+      const c = pickCell();
+      const to = new V3(c.x + rand(-0.08, 0.08), c.y + Math.max(0, c.h - 0.05), c.z + rand(-0.08, 0.08));
+      c.h += H * 0.6;
+      const ground = c.y === 0;
+      aw = { from: tableTop, to, dur: ground ? 1.4 : 0.6, arc: ground ? 1.2 : 0.4,
+        rot: new T.Euler(rand(-0.7, 0.7), rand(0, 6.28), rand(-0.7, 0.7)), spin: ground ? 9 : 4 };
+    }
+    awardCount++;
+    aw.m = m; aw.t = 0;
+    m.position.copy(aw.from);
+    m.scale.setScalar(0.01);
+    scene.add(m);
+    awardsMoving.push(aw);
+    // A little fanfare, wherever the player is looking
+    [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, 0.16, 'triangle', 0.09, i * 0.09));
+    if (m.userData.shiny) for (let i = 0; i < 5; i++) tone(rand(2500, 4500), rand(2500, 4500), 0.07, 'sine', 0.04, 0.4 + i * 0.06);
+  }
+  const sparkPos = new V3();
+  function updateAwards(dt) {
+    for (let i = awardsMoving.length - 1; i >= 0; i--) {
+      const aw = awardsMoving[i], m = aw.m;
+      aw.t += dt;
+      const k = Math.min(1, aw.t / aw.dur);
+      m.scale.setScalar(Math.min(1, 0.01 + aw.t / 0.25));
+      m.position.lerpVectors(aw.from, aw.to, k);
+      m.position.y = aw.from.y + (aw.to.y - aw.from.y) * k * k + aw.arc * 4 * k * (1 - k);
+      m.rotation.set(aw.rot.x + (1 - k) * aw.spin, aw.rot.y + (1 - k) * aw.spin * 0.5, aw.rot.z);
+      if (k >= 1) {
+        m.position.copy(aw.to); m.rotation.copy(aw.rot);
+        awardsMoving.splice(i, 1);
+        if (m.userData.shiny) shinies.push(m);
+        tone(aw.to.y < 1 ? 160 : 260, 120, 0.1, 'sine', 0.14);
+        for (let s = 0; s < 4; s++) emojiPuff('✨', aw.to.clone().add(new V3(rand(-0.3, 0.3), rand(0.1, 0.5), rand(-0.3, 0.3))), 0.22, new V3(0, 0.5, 0), 0.6, 0);
+      }
+    }
+    // Gold things glint now and then
+    sparkleT -= dt;
+    if (sparkleT <= 0 && shinies.length) {
+      sparkleT = rand(0.12, 0.35);
+      pick(shinies).getWorldPosition(sparkPos);
+      sparkPos.add(new V3(rand(-0.16, 0.16), rand(0.08, 0.45), rand(-0.16, 0.16)));
+      emojiPuff('✨', sparkPos, rand(0.1, 0.17), new V3(0, 0.25, 0), 0.6, 0);
+    }
+  }
+
+  // ======================================================================
+  // ---------- The UFO alien ----------
+  // Half the time a UFO stops, hovers, and beams down a skinny grey alien. It runs about outside the
+  // fence, hides behind trees, and fires zappers that always miss. Hit it and it runs back, gets
+  // beamed up, and the UFO zooms off.
+  // ======================================================================
+  const ALIEN_S = 1.4;
+  let alien = null;
+  const alienZaps = [];
+  const zapGeo = new T.CylinderGeometry(0.1, 0.1, 1.3, 6); zapGeo.rotateX(Math.PI / 2);
+  const zapMat = new T.MeshBasicMaterial({ color: 0x7bff5a, fog: false });
+  const bigBeam = new T.Mesh(new T.ConeGeometry(1, 1, 18, 1, true),
+    new T.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0.3, depthWrite: false, side: T.DoubleSide, fog: false }));
+  bigBeam.visible = false;
+  scene.add(bigBeam);
+  function makeAlien() {
+    const g = new T.Group(); // faces +z
+    const grey = 0x9ea8b4;
+    const legs = [], arms = [];
+    for (const x of [-0.12, 0.12]) {
+      const hip = new T.Group(); hip.position.set(x, 0.86, 0);
+      const leg = part(new T.CylinderGeometry(0.05, 0.05, 0.82, 6), grey, 1.3); leg.position.y = -0.42; hip.add(leg);
+      sph(hip, grey, 0.08, 0.05, 0.14, 0, -0.84, 0.05);
+      g.add(hip); legs.push(hip);
+    }
+    const body = part(new T.CylinderGeometry(0.14, 0.11, 0.72, 8), grey, 1.12); body.position.y = 1.2; g.add(body);
+    const belt = part(new T.CylinderGeometry(0.125, 0.125, 0.07, 8), 0x7b5cff, 1.1); belt.position.y = 0.92; g.add(belt);
+    for (const x of [-0.19, 0.19]) {
+      const sh = new T.Group(); sh.position.set(x, 1.5, 0);
+      const arm = part(new T.CylinderGeometry(0.04, 0.04, 0.66, 6), grey, 1.3); arm.position.y = -0.33; sh.add(arm);
+      sph(sh, grey, 0.065, 0.065, 0.065, 0, -0.67, 0);
+      g.add(sh); arms.push(sh);
+    }
+    const neck = part(new T.CylinderGeometry(0.045, 0.05, 0.2, 6), grey, 1.2); neck.position.y = 1.64; g.add(neck);
+    sph(g, grey, 0.2, 0.2, 0.19, 0, 1.8, 0.03);  // chin
+    sph(g, grey, 0.35, 0.36, 0.32, 0, 2.02, 0);  // big round head
+    for (const s of [-1, 1]) {
+      const e = dot(g, INK, 0.13, 0.075, 0.06, s * 0.14, 1.96, 0.27); e.rotation.z = s * 0.5; e.rotation.y = s * 0.35;
+      dot(g, 0xffffff, 0.03, 0.022, 0.02, s * 0.12, 1.99, 0.32);
+    }
+    dot(g, 0x6c7480, 0.045, 0.012, 0.02, 0, 1.75, 0.2);
+    // Ray gun in the right hand
+    const gun = new T.Group(); gun.position.set(0, -0.67, 0.06);
+    box(gun, 0xff4d6d, 0.07, 0.09, 0.24, 0, 0, 0.08);
+    const tip = new T.Mesh(SPH, flatMat(0x7bff5a)); tip.scale.setScalar(0.06); tip.position.set(0, 0, 0.22); gun.add(tip);
+    // the gun points along the arm's -y, so it points forwards when the arm is raised
+    gun.rotation.x = Math.PI / 2;
+    arms[0].add(gun);
+    g.userData = { legs, arms, tip };
+    g.scale.setScalar(ALIEN_S);
+    return g;
+  }
+  // The alien keeps out of the paddock, and well away from the lookout.
+  const KEEP = { x0: PEN.x0 - 3, x1: PEN.x1 + 3, z0: PEN.z0 - 3, z1: PEN.z1 + 3 };
+  const inKeep = (x, z) => (x > KEEP.x0 && x < KEEP.x1 && z > KEEP.z0 && z < KEEP.z1) || z > -9;
+  function clearRun(a, b) {
+    for (let i = 1; i < 20; i++) { const t = i / 20; if (inKeep(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; }
+    return true;
+  }
+  function routeTo(from, to) {
+    if (clearRun(from, to)) return [to];
+    const cs = [new V3(KEEP.x0 - 1.5, 0, KEEP.z0 - 1.5), new V3(KEEP.x1 + 1.5, 0, KEEP.z0 - 1.5)];
+    for (const c of cs) if (clearRun(from, c) && clearRun(c, to)) return [c, to];
+    const first = from.x < 0 ? cs[0] : cs[1], second = first === cs[0] ? cs[1] : cs[0];
+    return [first, second, to];
+  }
+  function alienSpot(from) {
+    for (let i = 0; i < 60; i++) {
+      const x = rand(-40, 40), z = rand(-60, -10);
+      if (inKeep(x, z)) continue;
+      const d = Math.hypot(x - from.x, z - from.z);
+      if (d > 7 && d < 32) return new V3(x, 0, z);
+    }
+    return new V3(rand(-20, 20), 0, -48);
+  }
+  function hideSpot(from) {
+    const trees = treeList.filter((t) => {
+      const p = t.g.position, dx = p.x - camera.position.x, dz = p.z - camera.position.z;
+      return Math.abs(Math.atan2(dx, -dz)) < 74 * DEG && Math.hypot(dx, dz) < 72 && !inKeep(p.x, p.z);
+    }).sort((a, b) => a.g.position.distanceTo(from) - b.g.position.distanceTo(from));
+    if (!trees.length) return null;
+    const t = pick(trees.slice(0, 4));
+    const away = t.g.position.clone().sub(camera.position).setY(0).normalize();
+    const spot = t.g.position.clone().addScaledVector(away, 0.9 * t.s).setY(0);
+    return { spot, tree: t };
+  }
+  function alienGo(al, goal, to) {
+    al.state = 'run'; al.goal = goal;
+    al.path = routeTo(al.m.position, to);
+  }
+  function alienNext(al) {
+    // Never two shooting spells in a row: after shooting, it always runs somewhere new or hides.
+    if (al.state !== 'shoot' && Math.random() < 0.5) { al.state = 'shoot'; al.shots = 1 + Math.floor(rand(0, 3)); al.timer = 0.5; return; }
+    if (Math.random() < 0.4) {
+      const h = hideSpot(al.m.position);
+      if (h) { al.hide = h; alienGo(al, 'hide', h.spot); return; }
+    }
+    alienGo(al, 'spot', alienSpot(al.m.position));
+  }
+  function alienArrive(al) {
+    if (al.goal === 'hide') { al.state = 'crouch'; al.timer = rand(2.5, 4.5); }
+    else if (al.goal === 'peek') { al.state = 'shoot'; al.shots = 1 + Math.floor(rand(0, 2)); al.timer = 0.4; }
+    else if (al.goal === 'ufo') { al.state = 'up'; al.t = 0; beamSound(); }
+    else alienNext(al);
+  }
+  function beamSound() { for (let i = 0; i < 8; i++) tone(500 + i * 90, 700 + i * 90, 0.16, 'sine', 0.05, i * 0.11); }
+  function alienFire() {
+    const al = alien;
+    al.m.updateMatrixWorld(true);
+    const from = al.m.userData.tip.getWorldPosition(new V3());
+    const toCam = camera.position.clone().sub(from).normalize();
+    const side = new V3().crossVectors(toCam, new V3(0, 1, 0)).normalize();
+    // Always a miss: aimed a couple of metres to one side of the player, and a bit high.
+    const miss = camera.position.clone().addScaledVector(side, (Math.random() < 0.5 ? -1 : 1) * rand(2.2, 3.6)).add(new V3(0, rand(0.8, 2.2), 0));
+    const v = miss.sub(from).normalize().multiplyScalar(30);
+    const m = new T.Mesh(zapGeo, zapMat);
+    m.position.copy(from);
+    m.lookAt(from.clone().add(v));
+    scene.add(m);
+    alienZaps.push({ m, v, life: 4, near: Infinity, whiz: false });
+    al.recoil = 1;
+    tone(1800, 500, 0.2, 'square', 0.045);
+    tone(2600, 1200, 0.16, 'sine', 0.05);
+  }
+  function startAlien(f) {
+    const m = makeAlien();
+    const p = f.m.position;
+    const dropY = p.y - 2.5;
+    m.position.set(p.x, dropY, p.z);
+    scene.add(m);
+    alien = { m, ufo: f, state: 'drop', t: 0, timer: 0, dropY, path: [], goal: null, shots: 0, crouch: 0, recoil: 0, hide: null };
+    beamSound();
+  }
+  function alienShotHit(a, len2) {
+    const al = alien;
+    if (!al || !['run', 'shoot', 'crouch'].includes(al.state) || al.goal === 'ufo') return false;
+    centre.copy(al.m.position); centre.y += ALIEN_S * (1.3 - al.crouch * 0.45);
+    if (!segHits(centre, 1.7 - al.crouch * 0.4 + a.pad, len2)) return false;
+    // Got it! Squeal, and run for the saucer.
+    emojiPuff('💫', centre.clone().add(new V3(0, 1.4, 0)), 2.2, new V3(0, 1.5, 0), 1.0, 0);
+    if (a.goo) gooPuff(centre); else if (a.snow) snowPuff(centre);
+    tone(700, 2100, 0.25, 'sine', 0.12);
+    tone(900, 2600, 0.2, 'sine', 0.08, 0.2);
+    const u = al.ufo.m.position;
+    alienGo(al, 'ufo', new V3(u.x, 0, u.z));
+    al.crouch = 0;
+    return true;
+  }
+  function updateAlien(dt) {
+    for (let i = alienZaps.length - 1; i >= 0; i--) {
+      const z = alienZaps[i];
+      z.life -= dt;
+      z.m.position.addScaledVector(z.v, dt);
+      const d = z.m.position.distanceTo(camera.position);
+      if (!z.whiz && d > z.near && z.near < 7) { z.whiz = true; tone(1400, 300, 0.3, 'sine', 0.06); noiseBurst(0.25, 2500, 0.05); }
+      z.near = Math.min(z.near, d);
+      if (z.life <= 0 || z.m.position.y < 0) { scene.remove(z.m); alienZaps.splice(i, 1); }
+    }
+    const al = alien;
+    if (!al) return;
+    const m = al.m, p = m.position, ud = m.userData, u = al.ufo.m.position;
+    al.t += dt; al.timer -= dt;
+    al.recoil = Math.max(0, al.recoil - dt * 4);
+    let moving = false, aiming = false;
+    if (bigBeam.visible) {
+      const y = u.y - 1;
+      bigBeam.position.set(u.x, y / 2, u.z); bigBeam.scale.set(3.4, y, 3.4);
+      bigBeam.material.opacity = 0.25 + Math.abs(Math.sin(al.t * 6)) * 0.12;
+    }
+    if (al.state === 'drop') {
+      bigBeam.visible = true;
+      const k = Math.min(1, al.t / 2.2);
+      p.y = (1 - k) * al.dropY;
+      m.rotation.y += dt * 3;
+      if (k >= 1) { p.y = 0; bigBeam.visible = false; alienNext(al); }
+    } else if (al.state === 'up') {
+      bigBeam.visible = true;
+      const k = Math.min(1, al.t / 1.8);
+      p.set(u.x, k * (u.y - 1.5), u.z);
+      m.scale.setScalar(ALIEN_S * (1 - 0.75 * k));
+      m.rotation.y += dt * 6;
+      if (k >= 1) {
+        scene.remove(m); bigBeam.visible = false; alien = null;
+        const f = al.ufo; // off it goes, fast
+        f.state = 'fly'; f.leaving = true; f.speed = 30; f.t = 0;
+        [990, 660, 440, 330].forEach((fr, i) => tone(fr, fr * 0.7, 0.14, 'sine', 0.06, i * 0.1));
+        return;
+      }
+    } else if (al.state === 'run') {
+      const tg = al.path[0];
+      const dx = tg.x - p.x, dz = tg.z - p.z, dist = Math.hypot(dx, dz);
+      if (dist < 0.4) { al.path.shift(); if (!al.path.length) alienArrive(al); }
+      else {
+        const sp = (al.goal === 'ufo' ? 13 : al.goal === 'peek' ? 4 : 7.5) * dt;
+        p.x += (dx / dist) * Math.min(dist, sp); p.z += (dz / dist) * Math.min(dist, sp);
+        m.rotation.y += angDiff(Math.atan2(dx, dz), m.rotation.y) * Math.min(1, dt * 10);
+        moving = true;
+      }
+    } else {
+      // Standing still: face the player
+      m.rotation.y += angDiff(Math.atan2(camera.position.x - p.x, camera.position.z - p.z), m.rotation.y) * Math.min(1, dt * 6);
+      if (al.state === 'shoot') {
+        aiming = true;
+        if (al.timer <= 0) {
+          if (al.shots > 0) { alienFire(); al.shots--; al.timer = rand(0.55, 0.9); }
+          else alienNext(al);
+        }
+      } else if (al.state === 'crouch' && al.timer <= 0) {
+        // Pop out to one side of the tree and take a shot
+        const toCam = camera.position.clone().sub(p).setY(0).normalize();
+        const side = new V3(-toCam.z, 0, toCam.x).multiplyScalar((Math.random() < 0.5 ? -1 : 1) * 1.6 * al.hide.tree.s);
+        const out = p.clone().add(side);
+        if (inKeep(out.x, out.z)) out.copy(p).sub(side);
+        al.goal = 'peek'; al.state = 'run'; al.path = [out];
+      }
+    }
+    // Pose: crouch behind trees, swing legs when running, raise the zapper to shoot, flail when fleeing
+    const wantCrouch = al.state === 'crouch' ? 1 : 0;
+    al.crouch += (wantCrouch - al.crouch) * Math.min(1, dt * 6);
+    if (al.state !== 'up') m.scale.set(ALIEN_S, ALIEN_S * (1 - 0.38 * al.crouch), ALIEN_S);
+    const sw = moving ? Math.sin(al.t * (al.goal === 'ufo' ? 22 : 16)) * 0.8 : 0;
+    ud.legs[0].rotation.x = sw; ud.legs[1].rotation.x = -sw;
+    if (al.goal === 'ufo' && al.state === 'run') {
+      ud.arms[0].rotation.x = ud.arms[1].rotation.x = Math.PI * 0.9;
+      ud.arms[0].rotation.z = 0.4 + Math.sin(al.t * 30) * 0.3; ud.arms[1].rotation.z = -0.4 - Math.sin(al.t * 30) * 0.3;
+    } else {
+      ud.arms[0].rotation.z = ud.arms[1].rotation.z = 0;
+      ud.arms[1].rotation.x = -sw * 0.8;
+      ud.arms[0].rotation.x = aiming ? -1.45 + al.recoil * 0.4 : sw * 0.8;
+    }
+    p.y = al.state === 'drop' || al.state === 'up' ? p.y : (moving ? Math.abs(Math.sin(al.t * 16)) * 0.12 : 0);
+  }
+  // The UFO: stops over a spot behind the paddock, hovers while its alien is out, then leaves.
+  function updateHover(f, dt) {
+    const m = f.m, p = m.position;
+    p.y += (15 - p.y) * Math.min(1, dt * 1.2) + Math.sin(f.t * 2) * 0.8 * dt;
+    f.wobble = Math.max(0, (f.wobble || 0) - dt * 1.5);
+    m.rotation.z = Math.sin(f.t * 1.5) * 0.06 + Math.sin(f.t * 25) * 0.25 * f.wobble;
+    if (!f.visit.dropped && f.t > 1.6) { f.visit.dropped = true; startAlien(f); }
+  }
+
+  // ---------- The knight dino blocks arrows with its shield ----------
+  const shieldPt = new V3(), shieldN = new V3(), arrowDir = new V3();
+  function knightBlock(a, len2) {
+    for (const h of herd) {
+      const d = h.m, ud = d.userData;
+      if (!ud.shield || h.state === 'leave') continue;
+      centre.copy(d.position); centre.y += 1.0 * d.scale.y;
+      if (a.m.position.distanceTo(centre) < 30) h.guardT = 1.5; // an arrow's coming: shield up!
+      if (!segHits(centre, 1.25 * d.scale.y + 0.3, len2)) continue;
+      // Thunk. Turn to the arrow, shield fully up, and the arrow stays stuck in it for good.
+      if (h.state === 'roam') d.rotation.y = Math.atan2(-(camera.position.z - d.position.z), camera.position.x - d.position.x);
+      h.guardK = 1; poseShield(d, 1);
+      d.updateMatrixWorld(true);
+      const sh = ud.shield;
+      sh.getWorldPosition(shieldPt);
+      shieldN.set(0, 0, 1).transformDirection(sh.matrixWorld);
+      arrowDir.copy(a.v).normalize();
+      const r = Math.sqrt(Math.random()) * 0.3 * d.scale.x, ang = rand(0, Math.PI * 2);
+      const up = new V3(0, 1, 0), side = new V3().crossVectors(shieldN, up).normalize();
+      shieldPt.addScaledVector(up, Math.sin(ang) * r).addScaledVector(side, Math.cos(ang) * r).addScaledVector(shieldN, 0.06 * d.scale.x);
+      a.m.position.copy(shieldPt).addScaledVector(arrowDir, -0.85); // the tip sinks into the wood
+      a.m.lookAt(shieldPt.clone().add(arrowDir));
+      sh.attach(a.m);
+      tone(1900, 1700, 0.3, 'triangle', 0.09);
+      tone(2850, 2600, 0.25, 'sine', 0.05);
+      tone(180, 90, 0.08, 'square', 0.1);
+      noiseBurst(0.08, 3000, 0.15, 0, 1.5);
+      return true;
+    }
+    return false;
+  }
+
+  // ---------- The tennis dino hits balls back ----------
+  function returnBall(h) {
+    const d = h.m, p = d.position;
+    // Turn to face the player and swing.
+    const cx = camera.position.x - p.x, cz = camera.position.z - p.z;
+    d.rotation.y = Math.atan2(-cz, cx);
+    h.swingT = 0.4;
+    d.updateMatrixWorld(true);
+    const from = d.userData.racket.localToWorld(new V3(0, 0.52, 0));
+    // Lob it back so it sails just past the player's head.
+    const target = camera.position.clone().add(new V3(rand(-1.2, 1.2), -0.6, -1.2));
+    const T_FLIGHT = 1.4, G = 6;
+    const v = target.clone().sub(from).divideScalar(T_FLIGHT);
+    v.y += 0.5 * G * T_FLIGHT;
+    const m = part(SPH, 0xd7f53a, 1.12);
+    m.scale.setScalar(0.28);
+    m.position.copy(from);
+    scene.add(m);
+    shots.push({ m, v, g: G, life: 3, stuck: false, pad: 0, point: false, spin: 0, spinY: 0, sticks: false, age: 0, grow: null, noHit: true });
+    sfx.thok();
+    after(0.05, () => tone(900, 500, 0.06, 'triangle', 0.12));
+    emojiPuff('💥', from, 1.2, new V3(), 0.25, 0);
   }
 
   // ---------- Main loop ----------
@@ -3996,6 +4731,10 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
       if (a.grow) a.m.scale.setScalar(Math.min(a.grow[1], a.grow[0] + a.age * a.grow[2]));
       seg.copy(a.m.position).sub(prev);
       const len2 = seg.lengthSq();
+      if (a.noHit) { // a ball coming back to the player: it flies past and is gone
+        if (a.m.position.distanceTo(camera.position) < 2.2 || a.m.position.y < 0.12) { scene.remove(a.m); shots.splice(i, 1); }
+        continue;
+      }
       let used = false;
       if (rig && segHits(centre.copy(rig.g.position).add(rig.button.position), BUTTON_HIT + a.pad * 0.5, len2)) {
         replayWord();
@@ -4023,6 +4762,17 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
           break;
         }
       }
+      if (!used && a.point && a.sticks) used = knightBlock(a, len2);
+      if (!used && a.ball === 'tennis') {
+        for (const h of herd) {
+          if (!h.m.userData.racket || h.state === 'leave') continue;
+          centre.copy(h.m.position); centre.y += 1.3;
+          if (!segHits(centre, 2.4 + a.pad, len2)) continue;
+          returnBall(h);
+          used = true;
+          break;
+        }
+      }
       const sticky = a.goo ? 'goo' : a.snow ? 'snow' : a.water ? 'water' : null;
       if (!used && sticky) {
         for (const h of herd) {
@@ -4045,8 +4795,16 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
         }
       }
       if (!used && eggShotHit(a, len2)) used = !a.pierce;
+      if (!used && alienShotHit(a, len2)) used = !a.pierce;
       if (!used) {
         for (const f of flyers) {
+          if (f.state === 'hover' && segHits(f.m.position, f.r + a.pad, len2)) {
+            // The saucer can't be knocked down while its alien is out: it just wobbles
+            if ((f.wobble || 0) < 0.5) tone(300, 520, 0.18, 'sine', 0.1);
+            f.wobble = 1;
+            used = !a.pierce;
+            break;
+          }
           if (f.state !== 'fly' || !segHits(f.m.position, f.r + a.pad, len2)) continue;
           crashFlyer(f);
           if (a.goo) gooPuff(a.m.position);
@@ -4095,6 +4853,8 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     updateSplats(dt);
     updateCoats(dt);
     updateEggs(dt);
+    updateAwards(dt);
+    updateAlien(dt);
 
     // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
