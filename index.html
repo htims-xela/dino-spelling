@@ -1376,6 +1376,7 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
   const BUGS_TO_START = 10; // bugs gathered at the fence before they break in
   const BUGS_PER_WORD = 2;
   const MAX_DINOS = 24;     // rescued dinos living in the paddock at once
+  const MIN_REGULAR = 5;    // however many special dinos there are, this many ordinary ones can still stay
   // The fenced paddock, seen from a lookout tower just in front of it.
   const PEN = { x0: -23, x1: 23, z0: -38, z1: -5 };
   const DECK_Y = 9.4;
@@ -2948,9 +2949,13 @@ window.VOICE_CLIPS = {"cat":"data:audio/mp4;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtc
     const h = { m: d, t: 0, wp: roamPoint(), rest: 0 };
     startCheer(h);
     herd.push(h);
+    // Special dinos stay for good. Ordinary ones fill whatever room is left, but there's always
+    // room for at least MIN_REGULAR of them. Past that, the oldest ordinary dino goes home for a nap.
     const living = herd.filter((x) => x.state !== 'leave');
-    if (living.length > MAX_DINOS && living.some((x) => !x.m.userData.special)) { // the oldest one goes home for a nap
-      const old = living.find((x) => !x.m.userData.special); // special dinos stay for good
+    const regular = living.filter((x) => !x.m.userData.special);
+    const room = Math.max(MIN_REGULAR, MAX_DINOS - (living.length - regular.length));
+    if (regular.length > room) {
+      const old = regular[0];
       old.state = 'leave';
       old.t = 0;
       const hp = old.m.position.clone(); hp.y += 2;
